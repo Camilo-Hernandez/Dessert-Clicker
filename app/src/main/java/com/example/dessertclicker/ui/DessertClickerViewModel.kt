@@ -1,12 +1,6 @@
 package com.example.dessertclicker.ui
 
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
-import android.widget.Toast
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
-import com.example.dessertclicker.R
 import com.example.dessertclicker.data.Datasource
 import com.example.dessertclicker.model.Dessert
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,9 +10,7 @@ data class UiState(
     var revenue: Int = 0,
     var dessertsSold: Int = 0,
     val currentDessertIndex: Int = 0,
-    val desserts: List<Dessert> = run {
-        Datasource.dessertList
-    },
+    val desserts: List<Dessert> = Datasource.dessertList,
     var currentDessertPrice: Int = desserts[currentDessertIndex].price,
     var currentDessertImageId: Int = desserts[currentDessertIndex].imageId,
 )
@@ -26,14 +18,6 @@ data class UiState(
 class DessertClickerViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(UiState())
     val uiState = _uiState.asStateFlow()
-
-    init {
-        start()
-    }
-
-    private fun start() {
-        _uiState.value = UiState()
-    }
 
     val onDessertClicked = {
         with(_uiState.value) {
@@ -69,36 +53,6 @@ class DessertClickerViewModel : ViewModel() {
         }
 
         return dessertToShow
-    }
-
-    /**
-     * Share desserts sold information using ACTION_SEND intent
-     */
-    fun shareSoldDessertsInformation(
-        intentContext: Context,
-        revenue: Int,
-        dessertsSold: Int,
-    ) {
-        val sendIntent = Intent().apply {
-            action = Intent.ACTION_SEND
-            putExtra(
-                Intent.EXTRA_TEXT,
-                intentContext.getString(R.string.share_text, dessertsSold, revenue)
-            )
-            type = "text/plain"
-        }
-
-        val shareIntent = Intent.createChooser(sendIntent, null)
-
-        try {
-            ContextCompat.startActivity(intentContext, shareIntent, null)
-        } catch (e: ActivityNotFoundException) {
-            Toast.makeText(
-                intentContext,
-                intentContext.getString(R.string.sharing_not_available),
-                Toast.LENGTH_LONG
-            ).show()
-        }
     }
 
 }

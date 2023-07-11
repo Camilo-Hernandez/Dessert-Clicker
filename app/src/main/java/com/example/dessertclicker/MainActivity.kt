@@ -16,11 +16,14 @@
 
 package com.example.dessertclicker
 
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -53,6 +56,8 @@ import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.dessertclicker.ui.DessertClickerViewModel
 import com.example.dessertclicker.ui.UiState
 import com.example.dessertclicker.ui.theme.DessertClickerTheme
@@ -72,26 +77,13 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val intentContext = LocalContext.current
-                    val dessertClickerViewModel: DessertClickerViewModel by viewModels()
-                    val uiState by dessertClickerViewModel.uiState.collectAsState()
-                    Log.d("uiState", "$uiState")
-                    DessertClickerApp(
-                        uiState = uiState,
-                        onDessertClicked = dessertClickerViewModel.onDessertClicked,
-                        shareSoldDessertsInformation = {
-                            dessertClickerViewModel.shareSoldDessertsInformation(
-                                intentContext = intentContext,
-                                revenue = uiState.revenue,
-                                dessertsSold = uiState.dessertsSold
-                            )
-                        }
-                    )
+                    DessertClickerApp()
                 }
             }
         }
     }
 
+    // region lifecycle_calls
     override fun onStart() {
         super.onStart()
         Log.d(TAG, "onStart Called")
@@ -121,21 +113,69 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         Log.d(TAG, "onDestroy Called")
     }
+    // endregion
+}
+
+/**
+ * Share desserts sold information using ACTION_SEND intent
+ */
+private fun shareSoldDessertsInformation(
+    intentContext: Context,
+    revenue: Int,
+    dessertsSold: Int,
+) {
+    val sendIntent = Intent().apply {
+        action = Intent.ACTION_SEND
+        putExtra(
+            Intent.EXTRA_TEXT,
+            intentContext.getString(R.string.share_text, dessertsSold, revenue)
+        )
+        type = "text/plain"
+    }
+
+    val shareIntent = Intent.createChooser(sendIntent, null)
+
+    try {
+        ContextCompat.startActivity(intentContext, shareIntent, null)
+    } catch (e: ActivityNotFoundException) {
+        Toast.makeText(
+            intentContext,
+            intentContext.getString(R.string.sharing_not_available),
+            Toast.LENGTH_LONG
+        ).show()
+    }
+}
+
+@Composable
+private fun DessertClickerApp(
+    dessertClickerViewModel: DessertClickerViewModel = viewModel(),
+) {
+    val uiState by dessertClickerViewModel.uiState.collectAsState()
+    DessertClickerApp(
+        uiState = uiState,
+        onDessertClicked = dessertClickerViewModel.onDessertClicked,
+    )
 }
 
 @Composable
 private fun DessertClickerApp(
     uiState: UiState,
-    shareSoldDessertsInformation: () -> Unit,
     onDessertClicked: () -> Unit,
 ) {
     Scaffold(
         topBar = {
+            val intentContext: Context = LocalContext.current
             DessertClickerAppBar(
-                onShareButtonClicked = shareSoldDessertsInformation,
+                onShareButtonClicked = {
+                    shareSoldDessertsInformation(
+                        intentContext = intentContext,
+                        revenue = uiState.revenue,
+                        dessertsSold = uiState.dessertsSold
+                    )
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.primary)
+                    .background(MaterialTheme.colorScheme.primary),
             )
         }
     ) { contentPadding ->
