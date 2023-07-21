@@ -1,34 +1,44 @@
 package com.example.dessertclicker.ui
 
+import androidx.annotation.DrawableRes
 import androidx.lifecycle.ViewModel
 import com.example.dessertclicker.data.Datasource
 import com.example.dessertclicker.model.Dessert
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 data class UiState(
-    var revenue: Int = 0,
-    var dessertsSold: Int = 0,
+    val revenue: Int = 0,
+    val dessertsSold: Int = 0,
     val currentDessertIndex: Int = 0,
-    val desserts: List<Dessert> = Datasource.dessertList,
-    var currentDessertPrice: Int = desserts[currentDessertIndex].price,
-    var currentDessertImageId: Int = desserts[currentDessertIndex].imageId,
+    val currentDessertPrice: Int,
+    @DrawableRes val currentDessertImageId: Int,
 )
 
 class DessertClickerViewModel : ViewModel() {
-    private val _uiState = MutableStateFlow(UiState())
+    private val desserts: List<Dessert> = Datasource.dessertList
+
+    private val _uiState = MutableStateFlow(UiState(
+        currentDessertPrice = desserts.first().price,
+        currentDessertImageId = desserts.first().imageId,
+    ))
     val uiState = _uiState.asStateFlow()
 
     val onDessertClicked = {
-        with(_uiState.value) {
+        _uiState.update {
             // Update the revenue
-            revenue = _uiState.value.currentDessertPrice.inc()
-            dessertsSold++
+            val newDessertsSold = it.dessertsSold + 1
+            val dessertToShow = determineDessertToShow(newDessertsSold)
 
             // Show the next dessert
-            val dessertToShow = determineDessertToShow(desserts, dessertsSold)
-            currentDessertImageId = dessertToShow.imageId
-            currentDessertPrice = dessertToShow.price
+            it.copy(
+                revenue = it.revenue + it.currentDessertPrice,
+                dessertsSold = newDessertsSold,
+                currentDessertIndex = it.currentDessertIndex + 1,
+                currentDessertPrice = dessertToShow.price,
+                currentDessertImageId = dessertToShow.imageId,
+            )
         }
     }
 
@@ -36,8 +46,8 @@ class DessertClickerViewModel : ViewModel() {
      * Determine which dessert to show.
      */
     private fun determineDessertToShow(
-        desserts: List<Dessert>,
         dessertsSold: Int,
+        desserts: List<Dessert> = Datasource.dessertList,
     ): Dessert {
         var dessertToShow = desserts.first()
         for (dessert in desserts) {
